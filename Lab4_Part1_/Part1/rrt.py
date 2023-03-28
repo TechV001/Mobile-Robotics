@@ -22,6 +22,13 @@ def step_from_to(node0, node1, limit=75):
     #    limit units at most
     # 3. Hint: please consider using np.arctan2 function to get vector angle
     # 4. Note: remember always return a Node object
+    distance = get_dist(node0, node1)
+    if(distance >= limit):
+      new_dist = distance - limit
+      return node0
+    else:
+      return node1
+      
     return node1
     ############################################################################
 
