@@ -26,8 +26,6 @@ def step_from_to(node0, node1, limit=75):
     if(distance >= limit):
       new_dist = distance - limit
       return node0
-    else:
-      return node1
       
     return node1
     ############################################################################
