@@ -22,8 +22,12 @@ def step_from_to(node0, node1, limit=75):
     #    limit units at most
     # 3. Hint: please consider using np.arctan2 function to get vector angle
     # 4. Note: remember always return a Node object
-    return node1
     ############################################################################
+	float dist = get_dist(node0, node1)
+	if(dist > limit)
+		node NewNode
+		return newNode
+	return node1
 
 
 def node_generator(cmap):
