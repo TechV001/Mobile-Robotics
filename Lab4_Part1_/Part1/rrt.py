@@ -2,6 +2,8 @@ from time import sleep
 from cmap import *
 from gui import *
 from utils import *
+import random
+import math
 
 MAX_NODES = 20000
 
@@ -46,7 +48,9 @@ def node_generator(cmap):
     while True:
       x = random.uniform(0, cmap.width)
       y = random.uniform(0, cmap.height)
-      rand_node = Node(x, y)
+      #cannot create the node object for tuple reaons
+      coord = (math.floor(x), math.floor(y))
+      rand_node = Node(coord)
    
       if cmap.is_inbound(rand_node) and not cmap.is_inside_obstacles(rand_node):
           break
