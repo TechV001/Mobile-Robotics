@@ -46,11 +46,9 @@ def node_generator(cmap):
     #    legitimacy of the random node.
     # 3. Note: remember always return a Node object
     while True: 
-      #cannot create the node object for tuple reaons
-      #coord = (math.floor(x), math.floor(y))
-      rand_node = Node([math.floor(random.uniform(0, cmap.width)), math.floor(random.uniform(0, cmap.height))])
+      rand_node = Node([random.uniform(0, cmap.width), random.uniform(0, cmap.height)])
 
-      if cmap.is_inbound(rand_node) and not cmap.is_inside_obstacles(rand_node):
+      if (cmap.is_inbound(rand_node) and cmap.is_inside_obstacles(rand_node) == False):
           break
     ############################################################################
     return rand_node
@@ -73,16 +71,18 @@ def RRT(cmap, start):
         rand_node = cmap.get_random_valid_node()
         nearest_node = None
         min_dist = float("inf")
-        for node in cmap.get_nodes():
+        for node in cmap._nodes:
             dist = get_dist(node, rand_node)
             if dist < min_dist:
                 min_dist = dist
                 nearest_node = node
         new_node = step_from_to(nearest_node, rand_node)
-        cmap.add_node(new_node)
+        if cmap.is_inside_obstacles(new_node) == False:
+            cmap.add_node(new_node)
         ########################################################################
         sleep(0.01)
-        cmap.add_path(nearest_node, new_node)
+        if cmap.is_collision_with_obstacles([nearest_node, new_node]) == False:
+            cmap.add_path(nearest_node, new_node)
         if cmap.is_solved():
             break
 
