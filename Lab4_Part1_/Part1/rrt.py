@@ -22,12 +22,16 @@ def step_from_to(node0, node1, limit=75):
     #    limit units at most
     # 3. Hint: please consider using np.arctan2 function to get vector angle
     # 4. Note: remember always return a Node object
-    distance = get_dist(node0, node1)
-    if(distance >= limit):
-      new_dist = distance - limit
-      return node0
-      
-    return node1
+   distance = get_dist(node0, node1)
+   if distance < limit:
+      return node1
+
+   theta = np.arctan2(node1.y - node0.y, node1.x - node0.x)
+   new_x = node0.x + limit * np.cos(theta)
+   new_y = node0.y + limit * np.sin(theta)
+   new_node = Node(new_x, new_y)
+
+   return new_node
     ############################################################################
 
 
@@ -39,7 +43,13 @@ def node_generator(cmap):
     # 2. Use CozMap.is_inbound and CozMap.is_inside_obstacles to determine the
     #    legitimacy of the random node.
     # 3. Note: remember always return a Node object
-    pass
+    while True:
+      x = random.uniform(0, cmap.width)
+      y = random.uniform(0, cmap.height)
+      rand_node = Node(x, y)
+   
+      if cmap.is_inbound(rand_node) and not cmap.is_inside_obstacles(rand_node):
+          break
     ############################################################################
     return rand_node
 
@@ -58,12 +68,19 @@ def RRT(cmap, start):
         # 3. Limit the distance RRT can move
         # 4. Add one path from nearest node to random node
         #
-        rand_node = None
+        rand_node = cmap.get_random_valid_node()
         nearest_node = None
-        pass
+        min_dist = float("inf")
+        for node in cmap.get_nodes():
+            dist = get_dist(node, rand_node)
+            if dist < min_dist:
+                min_dist = dist
+                nearest_node = node
+        new_node = step_from_to(nearest_node, rand_node)
+        cmap.add_node(new_node)
         ########################################################################
         sleep(0.01)
-        cmap.add_path(nearest_node, rand_node)
+        cmap.add_path(nearest_node, new_node)
         if cmap.is_solved():
             break
 
