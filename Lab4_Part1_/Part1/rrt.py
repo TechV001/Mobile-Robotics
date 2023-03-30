@@ -31,7 +31,7 @@ def step_from_to(node0, node1, limit=75):
    theta = np.arctan2(node1.y - node0.y, node1.x - node0.x)
    new_x = node0.x + limit * np.cos(theta)
    new_y = node0.y + limit * np.sin(theta)
-   new_node = Node(new_x, new_y)
+   new_node = Node([new_x, new_y])
 
    return new_node
     ############################################################################
@@ -45,13 +45,11 @@ def node_generator(cmap):
     # 2. Use CozMap.is_inbound and CozMap.is_inside_obstacles to determine the
     #    legitimacy of the random node.
     # 3. Note: remember always return a Node object
-    while True:
-      x = random.uniform(0, cmap.width)
-      y = random.uniform(0, cmap.height)
+    while True: 
       #cannot create the node object for tuple reaons
-      coord = (math.floor(x), math.floor(y))
-      rand_node = Node(coord)
-   
+      #coord = (math.floor(x), math.floor(y))
+      rand_node = Node([math.floor(random.uniform(0, cmap.width)), math.floor(random.uniform(0, cmap.height))])
+
       if cmap.is_inbound(rand_node) and not cmap.is_inside_obstacles(rand_node):
           break
     ############################################################################
