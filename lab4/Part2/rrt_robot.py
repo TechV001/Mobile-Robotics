@@ -1,11 +1,15 @@
 import cozmo
-
+from cozmo.objects import CustomObject, CustomObjectMarkers, CustomObjectTypes
 from cmap import *
 from gui import *
 from utils import *
+import asyncio
+import random
+from time import sleep
+import math
 
 MAX_NODES = 20000
-
+cur_path = []
 ################################################################################
 # NOTE:
 # Before you start, please familiarize yourself with class Node in utils.py
@@ -14,15 +18,7 @@ MAX_NODES = 20000
 # or node[0] for the x coordinate, and node.y or node[1] for the y coordinate
 ################################################################################
 
-def step_from_to(node0, node1, limit=75):
-    ############################################################################
-    # TODO: please enter your code below.
-    # 1. If distance between two nodes is less than limit, return node1
-    # 2. Otherwise, return a node in the direction from node0 to node1 whose
-    #    distance to node0 is limit. Recall that each iteration we can move
-    #    limit units at most
-    # 3. Hint: please consider using np.arctan2 function to get vector angle
-    # 4. Note: remember always return a Node object
+def step_from_to(node0, node1, limit=30):
     distance = get_dist(node0, node1)
     if distance < limit:
         return node1
@@ -38,35 +34,24 @@ def step_from_to(node0, node1, limit=75):
 
 def node_generator(cmap):
     rand_node = None
-    ############################################################################
-    # TODO: please enter your code below.
-    # 1. Use CozMap width and height to get a uniformly distributed random node
-    # 2. Use CozMap.is_inbound and CozMap.is_inside_obstacles to determine the
-    #    legitimacy of the random node.
-    # 3. Note: remember always return a Node object
+
     while True: 
       rand_node = Node([random.uniform(0, cmap.width), random.uniform(0, cmap.height)])
 
       if (cmap.is_inbound(rand_node) and cmap.is_inside_obstacles(rand_node) == False):
           break
-    ############################################################################
+    
     return rand_node
 
 
 def RRT(cmap, start):
     cmap.add_node(start)
-
+    global stopevent
     map_width, map_height = cmap.get_size()
-
+    
     while (cmap.get_num_nodes() < MAX_NODES):
         ########################################################################
-        # TODO: please enter your code below.
-        # 1. Use CozMap.get_random_valid_node() to get a random node. This
-        #    function will internally call the node_generator above
-        # 2. Get the nearest node to the random node from RRT
-        # 3. Limit the distance RRT can move
-        # 4. Add one path from nearest node to random node
-        #
+        
         rand_node = cmap.get_random_valid_node()
         nearest_node = None
         min_dist = float("inf")
@@ -81,8 +66,15 @@ def RRT(cmap, start):
             cmap.add_path(nearest_node, new_node)
         ########################################################################
         sleep(0.01)
-        cmap.add_path(nearest_node, rand_node)
+        
         if cmap.is_solved():
+            for goal in cmap._goals:
+               cur_path.append(goal)
+               i = 0
+               while cur_path[i].parent is not None:
+                  cur_path.append(cur_path[i].parent)
+                  i = i+1
+            
             break
 
     if cmap.is_solution_valid():
@@ -94,16 +86,91 @@ def RRT(cmap, start):
 
 
 async def CozmoPlanning(robot: cozmo.robot.Robot):
+    robot.world.image_annotator.annotation_enabled = False
+    robot.camera.image_stream_enabled = True
+    robot.camera.color_image_enabled = True
+    robot.camera.enable_auto_exposure = True
+    fixed_gain, exposure, mode = 3, 27, 0
     # Allows access to map and stopevent, which can be used to see if the GUI
     # has been closed by checking stopevent.is_set()
     global cmap, stopevent
+    
+    
+    cube_obj1 = robot.world.get_light_cube(cozmo.objects.LightCube1Id)
 
+    cube_obj2 = robot.world.get_light_cube(cozmo.objects.LightCube2Id)
+    
+    cube_obj3 = robot.world.get_light_cube(cozmo.objects.LightCube3Id)
+    
+    if (cube_obj1 is not None) and (cube_obj2 is not None) and (cube_obj3 is not None):
+        print("All cubes defined successfully!")
+    else:
+        print("One or more object definitions failed!")
+        
+    try:
+        while True:
+            event = await robot.world.wait_for(cozmo.camera.EvtNewRawCameraImage, timeout=30)   #get camera image
+            if event.image is not None:
+
+                if mode == 1:
+                    robot.camera.enable_auto_exposure = True
+                else:
+                    robot.camera.set_manual_exposure(exposure,fixed_gain)
+                    
+            target_cube = await robot.world.wait_for_observed_light_cube(timeout=30)
+            if(target_cube is not None):
+               cube_matrix = np.matrix([[target_cube.pose.position.x],[target_cube.pose.position.y],[1]])
+               transform_matrix = np.array([[np.cos(robot.pose.rotation.angle_z.radians), np.sin(robot.pose.rotation.angle_z.radians), -robot.pose.position.x * np.cos(robot.pose.rotation.angle_z.radians) - robot.pose.position.y * np.sin(robot.pose.rotation.angle_z.radians)],
+                  [-np.sin(robot.pose.rotation.angle_z.radians), np.cos(robot.pose.rotation.angle_z.radians), robot.pose.position.x * np.sin(robot.pose.rotation.angle_z.radians) - robot.pose.position.y * np.cos(robot.pose.rotation.angle_z.radians)],
+                  [0, 0, 1]])
+               robot_coord = transform_matrix * cube_matrix
+               #print("found target cube: ", target_cube)
+               if(target_cube.object_id == 1):
+                   # 2. Use RRT to find a path to a specific face of the cube
+                   #cmap.set_start(Node([robot.pose.position.x, robot.pose.position.y]))
+                   cmap.add_goal(Node([target_cube.pose.position.x, target_cube.pose.position.y]))
+                   cube1_x = robot_coord[0,0]
+                   cube1_y = robot_coord[1,0]
+                   #print("x: " + str(cube1_x) + "y: " + str(cube1_y))
+                   RRT_thread = RRTThread()
+                   RRT_thread.start()
+                   stopevent.set()
+                   
+                   path_coord_list = []
+                   if cmap.is_solved():
+                     goal_path = cur_path
+                     path_coord_list = [[node.x, node.y] for node in goal_path]
+                        
+                     print(path_coord_list)
+                     for coord in path_coord_list:
+                        pass
+                   
+                   
+               if(target_cube.object_id == 2):
+                  cmap.add_obstacle([Node([target_cube.pose.position.x-44, target_cube.pose.position.y]),
+                     Node([target_cube.pose.position.x, target_cube.pose.position.y-44]),
+                        Node([target_cube.pose.position.x+44, target_cube.pose.position.y]),
+                           Node([target_cube.pose.position.x, target_cube.pose.position.y+44])])
+                  cube2_x = robot_coord[0,0]
+                  cube2_y = robot_coord[1,0]
+               if(target_cube.object_id == 3):
+                  cmap.add_obstacle([Node([target_cube.pose.position.x-44, target_cube.pose.position.y]),
+                     Node([target_cube.pose.position.x, target_cube.pose.position.y-44]),
+                        Node([target_cube.pose.position.x+44, target_cube.pose.position.y]),
+                           Node([target_cube.pose.position.x, target_cube.pose.position.y+44])])
+                  cube3_x = robot_coord[0,0]
+                  cube3_y = robot_coord[1,0]
+               
     ########################################################################
     # TODO: please enter your code below.
     # Description of function provided in instructions
+    except KeyboardInterrupt:
+        print("")
+        print("Exit requested by user")
+    except cozmo.RobotBusy as e:
+        print(e)
 
-    
-
+               
 ################################################################################
 #                     DO NOT MODIFY CODE BELOW                                 #
 ################################################################################

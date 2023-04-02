@@ -15,7 +15,7 @@ MAX_NODES = 20000
 # or node[0] for the x coordinate, and node.y or node[1] for the y coordinate
 ################################################################################
 
-def step_from_to(node0, node1, limit=75):
+def step_from_to(node0, node1, limit=25):
     ############################################################################
     # TODO: please enter your code below.
     # 1. If distance between two nodes is less than limit, return node1
@@ -61,13 +61,6 @@ def RRT(cmap, start):
 
     while (cmap.get_num_nodes() < MAX_NODES):
         ########################################################################
-        # TODO: please enter your code below.
-        # 1. Use CozMap.get_random_valid_node() to get a random node. This
-        #    function will internally call the node_generator above
-        # 2. Get the nearest node to the random node from RRT
-        # 3. Limit the distance RRT can move
-        # 4. Add one path from nearest node to random node
-        #
         rand_node = cmap.get_random_valid_node()
         nearest_node = None
         min_dist = float("inf")
@@ -77,12 +70,12 @@ def RRT(cmap, start):
                 min_dist = dist
                 nearest_node = node
         new_node = step_from_to(nearest_node, rand_node)
-        if cmap.is_inside_obstacles(new_node) == False:
+        if (cmap.is_inside_obstacles(new_node) == False and cmap.is_collision_with_obstacles([nearest_node, new_node]) == False):
             cmap.add_node(new_node)
+            cmap.add_path(nearest_node, new_node)
         ########################################################################
         sleep(0.01)
-        if cmap.is_collision_with_obstacles([nearest_node, new_node]) == False:
-            cmap.add_path(nearest_node, new_node)
+            
         if cmap.is_solved():
             break
 
