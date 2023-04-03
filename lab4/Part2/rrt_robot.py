@@ -79,6 +79,7 @@ def RRT(cmap, start):
 
     if cmap.is_solution_valid():
         print("A valid solution has been found :-) ")
+        #stopevent.set()
     else:
         print("Please try again :-(")
 
@@ -94,7 +95,7 @@ async def CozmoPlanning(robot: cozmo.robot.Robot):
     # Allows access to map and stopevent, which can be used to see if the GUI
     # has been closed by checking stopevent.is_set()
     global cmap, stopevent
-    
+    goal_found = 0
     
     cube_obj1 = robot.world.get_light_cube(cozmo.objects.LightCube1Id)
 
@@ -106,7 +107,7 @@ async def CozmoPlanning(robot: cozmo.robot.Robot):
         print("All cubes defined successfully!")
     else:
         print("One or more object definitions failed!")
-        
+       
     try:
         while True:
             event = await robot.world.wait_for(cozmo.camera.EvtNewRawCameraImage, timeout=30)   #get camera image
@@ -128,7 +129,9 @@ async def CozmoPlanning(robot: cozmo.robot.Robot):
                if(target_cube.object_id == 1):
                    # 2. Use RRT to find a path to a specific face of the cube
                    #cmap.set_start(Node([robot.pose.position.x, robot.pose.position.y]))
-                   cmap.add_goal(Node([target_cube.pose.position.x, target_cube.pose.position.y]))
+                   if(goal_found == 0):
+                     cmap.add_goal(Node([target_cube.pose.position.x, target_cube.pose.position.y]))
+                     goal_found = 1
                    cube1_x = robot_coord[0,0]
                    cube1_y = robot_coord[1,0]
                    #print("x: " + str(cube1_x) + "y: " + str(cube1_y))
@@ -138,12 +141,27 @@ async def CozmoPlanning(robot: cozmo.robot.Robot):
                    
                    path_coord_list = []
                    if cmap.is_solved():
+                     print("solved")
                      goal_path = cur_path
                      path_coord_list = [[node.x, node.y] for node in goal_path]
+                     
+                     print(goal_path)
+                     for coord in path_coord_list[::-1]:
+                        print("world:", coord)
+                        temp_coord = np.matrix([[coord[0]],[coord[1]], [1]])
+                        new_coord = transform_matrix * temp_coord
+                        new_x = new_coord[0]
+                        new_y = new_coord[1]
+                        print("robot: ", new_x, new_y)
                         
-                     print(path_coord_list)
-                     for coord in path_coord_list:
-                        pass
+                        theta = np.arctan2(new_y-robot.pose.position.y, new_x-robot.pose.position.x)
+                        distance = np.sqrt((new_x - robot.pose.position.x) ** 2 + (new_y - robot.pose.position.y) ** 2)
+                        print("distance: ", distance)
+                        print("theta: ", theta)
+                        await robot.turn_in_place(
+                           cozmo.util.radians(theta), in_parallel=True).wait_for_completed()
+                        await robot.drive_straight(cozmo.util.distance_mm(distance),
+                            cozmo.util.speed_mmps(300), in_parallel=True).wait_for_completed()
                    
                    
                if(target_cube.object_id == 2):
@@ -160,15 +178,17 @@ async def CozmoPlanning(robot: cozmo.robot.Robot):
                            Node([target_cube.pose.position.x, target_cube.pose.position.y+44])])
                   cube3_x = robot_coord[0,0]
                   cube3_y = robot_coord[1,0]
-               
+    
     ########################################################################
     # TODO: please enter your code below.
     # Description of function provided in instructions
+    
     except KeyboardInterrupt:
         print("")
         print("Exit requested by user")
     except cozmo.RobotBusy as e:
         print(e)
+    print("done")
 
                
 ################################################################################
