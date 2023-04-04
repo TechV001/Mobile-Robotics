@@ -51,7 +51,6 @@ def RRT(cmap, start):
 
 	while (cmap.get_num_nodes() < MAX_NODES):
 ########################################################################
-
 		rand_node = cmap.get_random_valid_node()
 		nearest_node = None
 		min_dist = float("inf")
@@ -93,6 +92,7 @@ async def CozmoPlanning(robot: cozmo.robot.Robot):
 	robot.camera.color_image_enabled = True
 	robot.camera.enable_auto_exposure = True
 	fixed_gain, exposure, mode = 3, 27, 0
+
 	# Allows access to map and stopevent, which can be used to see if the GUI
 	# has been closed by checking stopevent.is_set()
 	global cmap, stopevent
@@ -104,97 +104,102 @@ async def CozmoPlanning(robot: cozmo.robot.Robot):
 
 	cube_obj3 = robot.world.get_light_cube(cozmo.objects.LightCube3Id)
 
-	if (cube_obj1 is not None) and (cube_obj2 is not None) and (cube_obj3 is not None):
+	if(cube_obj1 is None):
+		print("Cube 1 definition failed.")
+	if(cube_obj2 is None):
+		print("Cube 2 definition failed.")
+	if(cube_obj3 is None):
+		print("Cube 3 definition failed.")
+	if(cube_obj1 is not None and cube_obj2 is not None and cube_obj3 is not None):
 		print("All cubes defined successfully!")
 	else:
-		print("One or more object definitions failed!")
+		print("Undefined case.")
 
+	#robot_logic(cube_obj1, cube_obj2, cube_obj3)
+
+#async def robot_logic(cube_obj1, cube_obj2, cube_obj3):
 	try:
 		while True:
 			event = await robot.world.wait_for(cozmo.camera.EvtNewRawCameraImage, timeout=30)   #get camera image
 			if event.image is not None:
-
 				if mode == 1:
 					robot.camera.enable_auto_exposure = True
 				else:
 					robot.camera.set_manual_exposure(exposure,fixed_gain)
-
 			target_cube = await robot.world.wait_for_observed_light_cube(timeout=30)
-
 			#this should be where the searcing code goes, right?
-
 			if(target_cube is not None):
 				cube_matrix = np.matrix([[target_cube.pose.position.x],[target_cube.pose.position.y],[1]])
-				transform_matrix = np.array([[np.cos(robot.pose.rotation.angle_z.radians), np.sin(robot.pose.rotation.angle_z.radians), 
+				transform_matrix = np.array([[np.cos(robot.pose.rotation.angle_z.radians), np.sin(robot.pose.rotation.angle_z.radians),
 					-robot.pose.position.x * np.cos(robot.pose.rotation.angle_z.radians) - robot.pose.position.y * np.sin(robot.pose.rotation.angle_z.radians)],
-					[-np.sin(robot.pose.rotation.angle_z.radians), np.cos(robot.pose.rotation.angle_z.radians), 
+					[-np.sin(robot.pose.rotation.angle_z.radians), np.cos(robot.pose.rotation.angle_z.radians),
 					robot.pose.position.x * np.sin(robot.pose.rotation.angle_z.radians) - robot.pose.position.y * np.cos(robot.pose.rotation.angle_z.radians)],
 					[0, 0, 1]])
 				robot_coord = transform_matrix * cube_matrix
 				#print("found target cube: ", target_cube)
 				if(target_cube.object_id == 1):
-					# 2. Use RRT to find a path to a specific face of the cube
-					#cmap.set_start(Node([robot.pose.position.x, robot.pose.position.y]))
-					if(goal_found == 0):
-						cmap.add_goal(Node([target_cube.pose.position.x, target_cube.pose.position.y]))
-						goal_found = 1
-					cube1_x = robot_coord[0,0]
-					cube1_y = robot_coord[1,0]
-                   			#print("x: " + str(cube1_x) + "y: " + str(cube1_y))
-					await start_rrt()
-					while rrt_wait:
-						sleep(1)
-
-					path_coord_list = []
-					if cmap.is_solved():
-						print("solved")
-						goal_path = cur_path
-						path_coord_list = [[node.x, node.y] for node in goal_path]
-						path_coord_list.pop()
-						for coord in path_coord_list[::-1]:
-							print("world:", coord)
-							temp_coord = np.matrix([[coord[0]],[coord[1]], [1]])
-							new_coord = transform_matrix * temp_coord
-							new_x = new_coord[0]
-							new_y = new_coord[1]
-							print("robot: ", new_x, new_y)
-
-							theta = np.arctan2(new_y-robot.pose.position.y, new_x-robot.pose.position.x)
-							distance = np.sqrt((new_x - robot.pose.position.x) ** 2 + (new_y - robot.pose.position.y) ** 2)
-							print("distance: ", distance)
-							print("theta: ", theta)
-							await robot.turn_in_place(
-								cozmo.util.radians(theta), in_parallel=True).wait_for_completed()
-							await robot.drive_straight(cozmo.util.distance_mm(distance),
-								cozmo.util.speed_mmps(300), in_parallel=True).wait_for_completed()
-
-						if(target_cube.object_id == 2):
-							cmap.add_obstacle([Node([target_cube.pose.position.x-44, target_cube.pose.position.y]),
-								Node([target_cube.pose.position.x, target_cube.pose.position.y-44]),
-								Node([target_cube.pose.position.x+44, target_cube.pose.position.y]),
-								Node([target_cube.pose.position.x, target_cube.pose.position.y+44])])
-							cube2_x = robot_coord[0,0]
-							cube2_y = robot_coord[1,0]
-						if(target_cube.object_id == 3):
-							cmap.add_obstacle([Node([target_cube.pose.position.x-44, target_cube.pose.position.y]),
-								Node([target_cube.pose.position.x, target_cube.pose.position.y-44]),
-								Node([target_cube.pose.position.x+44, target_cube.pose.position.y]),
-								Node([target_cube.pose.position.x, target_cube.pose.position.y+44])])
-							cube3_x = robot_coord[0,0]
-							cube3_y = robot_coord[1,0]
+						# 2. Use RRT to find a path to a specific face of the cube
+						#cmap.set_start(Node([robot.pose.position.x, robot.pose.position.y]))
+						if(goal_found == 0):
+							if cmap.add_goal(Node([target_cube.pose.position.x, target_cube.pose.position.y])):
+								print("Found the goal.")
+								goal_found = 1
+							else:
+								print("Could not find a goal.")
+						cube1_x = robot_coord[0,0]
+						cube1_y = robot_coord[1,0]
+						#print("x: " + str(cube1_x) + "y: " + str(cube1_y))
+						await start_rrt()
+						while rrt_wait:
+							sleep(1)
+						path_coord_list = []
+						if cmap.is_solved():
+							print("Solved cmap!")
+							goal_path = cur_path
+							path_coord_list = [[node.x, node.y] for node in goal_path]
+							path_coord_list.pop()
+							for coord in path_coord_list[::-1]:
+								print("world:", coord)
+								temp_coord = np.matrix([[coord[0]],[coord[1]], [1]])
+								new_coord = transform_matrix * temp_coord
+								new_x = new_coord[0]
+								new_y = new_coord[1]
+								print("robot: ", new_x, new_y)
+								theta = np.arctan2(new_y-robot.pose.position.y, new_x-robot.pose.position.x)
+								distance = np.sqrt((new_x - robot.pose.position.x) ** 2 + (new_y - robot.pose.position.y) ** 2)
+								print("distance: ", distance)
+								print("theta: ", theta)
+								await robot.turn_in_place(
+									cozmo.util.radians(theta), in_parallel=True).wait_for_completed()
+								await robot.drive_straight(cozmo.util.distance_mm(distance),
+									cozmo.util.speed_mmps(300), in_parallel=True).wait_for_completed()
+				if(target_cube.object_id == 2):
+					cmap.add_obstacle([Node([target_cube.pose.position.x-44, target_cube.pose.position.y]),
+						Node([target_cube.pose.position.x, target_cube.pose.position.y-44]),
+						Node([target_cube.pose.position.x+44, target_cube.pose.position.y]),
+						Node([target_cube.pose.position.x, target_cube.pose.position.y+44])])
+					cube2_x = robot_coord[0,0]
+					cube2_y = robot_coord[1,0]
+				if(target_cube.object_id == 3):
+					cmap.add_obstacle([Node([target_cube.pose.position.x-44, target_cube.pose.position.y]),
+						Node([target_cube.pose.position.x, target_cube.pose.position.y-44]),
+						Node([target_cube.pose.position.x+44, target_cube.pose.position.y]),
+						Node([target_cube.pose.position.x, target_cube.pose.position.y+44])])
+					cube3_x = robot_coord[0,0]
+					cube3_y = robot_coord[1,0]
 
 ########################################################################
 # TODO: please enter your code below.
 # Description of function provided in instructions
 
 	except KeyboardInterrupt:
-		print("")
-		print("Exit requested by user")
+		print("\nExit requested by user.")
 	except cozmo.RobotBusy as e:
 		print(e)
-	print("done")
+	print("Done.")
 
 async def start_rrt():
+	print("Starting RRT thread...")
 	RRT_thread = RRTThread()
 	RRT_thread.start()
 	stopevent.set()

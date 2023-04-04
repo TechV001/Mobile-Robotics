@@ -113,12 +113,13 @@ class CozMap:
         """
         if self.is_inside_obstacles(node) or (not self.is_inbound(node)):
             print("start is not updated since your start is not legitimate\nplease try another one\n")
-            return
+            return False
         self.lock.acquire()
         self._start = Node((node.x, node.y))
         self.updated.set()
         self.changes.append('start')
         self.lock.release()
+        return True
 
     def get_start(self):
         """Get start
