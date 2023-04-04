@@ -10,6 +10,7 @@ import math
 
 MAX_NODES = 20000
 cur_path = []
+rrt_wait = 1
 ################################################################################
 # NOTE:
 # Before you start, please familiarize yourself with class Node in utils.py
@@ -79,6 +80,7 @@ def RRT(cmap, start):
 
     if cmap.is_solution_valid():
         print("A valid solution has been found :-) ")
+        rrt_wait = 0
         #stopevent.set()
     else:
         print("Please try again :-(")
@@ -135,17 +137,16 @@ async def CozmoPlanning(robot: cozmo.robot.Robot):
                    cube1_x = robot_coord[0,0]
                    cube1_y = robot_coord[1,0]
                    #print("x: " + str(cube1_x) + "y: " + str(cube1_y))
-                   RRT_thread = RRTThread()
-                   RRT_thread.start()
-                   stopevent.set()
+                   await start_rrt()
+                   while rrt_wait:
+                     sleep(1)
                    
                    path_coord_list = []
                    if cmap.is_solved():
                      print("solved")
                      goal_path = cur_path
                      path_coord_list = [[node.x, node.y] for node in goal_path]
-                     
-                     print(goal_path)
+                     path_coord_list.pop()
                      for coord in path_coord_list[::-1]:
                         print("world:", coord)
                         temp_coord = np.matrix([[coord[0]],[coord[1]], [1]])
@@ -190,7 +191,11 @@ async def CozmoPlanning(robot: cozmo.robot.Robot):
         print(e)
     print("done")
 
-               
+async def start_rrt():
+   RRT_thread = RRTThread()
+   RRT_thread.start()
+   stopevent.set()
+      
 ################################################################################
 #                     DO NOT MODIFY CODE BELOW                                 #
 ################################################################################
