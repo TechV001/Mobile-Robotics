@@ -84,8 +84,8 @@ def measurement_update(particles, measured_marker_list, grid):
                 phi =  diff_heading_deg(math.atan2(ry, rx), proj_angle_deg(rh))
                 # Update the particle's weight
                 
-                p1 = (1/(math.sqrt(2*math.pi)*MARKER_TRANS_SIGMA)) * (math.e ** (-0.5*(range_r-r_hat/MARKER_TRANS_SIGMA)**2))
-                p2 = (1/(math.sqrt(2*math.pi)*MARKER_ROT_SIGMA)) * (math.e ** (-0.5*(phi-phi_hat /MARKER_ROT_SIGMA)**2))
+                p1 = (1/(math.sqrt(2*math.pi)*MARKER_TRANS_SIGMA)) * (math.e ** (-0.5*(range_r/MARKER_TRANS_SIGMA)**2))
+                p2 = (1/(math.sqrt(2*math.pi)*MARKER_ROT_SIGMA)) * (math.e ** (-0.5*(phi-phi_hat-proj_angle_deg(rh)/MARKER_ROT_SIGMA)**2))
                 weight = p1*p2
         # Set the particle's weight and add it to the list of measured particles
         measured_weights.append(weight)
