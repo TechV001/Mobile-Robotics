@@ -28,14 +28,14 @@ def motion_update(particles, odom):
         # Calculate the motion model based on the odometry measurements
         
         
-        delta_rot1 = math.atan2(odom[1][1], odom[1][0])
+        delta_rot1 = diff_heading_deg(math.atan2(odom[1][1] - odom[0][1], odom[1][0] - odom[0][0]),odom[0][2])
         delta_trans = grid_distance(odom[0][0], odom[0][1], odom[1][0], odom[1][1])
-        delta_rot2 = odom[1][2] - delta_rot1
+        delta_rot2 = diff_heading_deg(diff_heading_deg(odom[1][2],odom[0][2]),delta_rot1)
         
         # Add noise to the motion model
-        delta_rot1_hat = delta_rot1 - 0.001 * random.gauss(0, alpha1 * delta_rot1 + alpha2 * delta_trans)
-        delta_trans_hat = delta_trans - 0.001 * random.gauss(0, alpha3 * delta_trans + alpha4 * (delta_rot1 + delta_rot2))
-        delta_rot2_hat = delta_rot2 - 0.001 * random.gauss(0, alpha1 * delta_rot2 + alpha2 * delta_trans)
+        delta_rot1_hat = diff_heading_deg(delta_rot1, random.gauss(0, alpha1 * delta_rot1 + alpha2 * delta_trans))
+        delta_trans_hat = delta_trans - random.gauss(0, alpha3 * delta_trans + alpha4 * (delta_rot1 + delta_rot2))
+        delta_rot2_hat = diff_heading_deg(delta_rot2, random.gauss(0, alpha1 * delta_rot2 + alpha2 * delta_trans))
         
         # Update the particle's pose based on the noisy motion model
         new_x = particle.x + delta_trans_hat * math.cos(particle.h + delta_rot1_hat)
@@ -79,13 +79,14 @@ def measurement_update(particles, measured_marker_list, grid):
             
             if measured_marker is not None:
                 # Calculate the likelihood of the measured marker given the particle's pose
-                distance_error = grid_distance(measured_marker[0], measured_marker[1], rx, ry)
-                heading_error = diff_heading_deg(measured_marker[2], rh)
-                phi_hat = math.atan2(measured_marker[1] - ry, measured_marker[0] - rx) - rh
+                distance_error = math.sqrt(rx**2 + ry**2)
+                phi_hat = math.atan2(ry,rx)
                 
                 # Update the particle's weight
-                weight *= 1/(math.sqrt(2*math.pi*(MARKER_TRANS_SIGMA**2))) * (math.e ** (-0.5 * (distance_error**2 / (0.1**2) + heading_error**2 / (MARKER_TRANS_SIGMA**2))))
                 
+                p1 = (1/(math.sqrt(2*math.pi)*MARKER_TRANS_SIGMA)) * (math.e ** (-0.5*(distance_error/MARKER_TRANS_SIGMA)**2))
+                p2 = (1/(math.sqrt(2*math.pi)*MARKER_ROT_SIGMA)) * (math.e ** (-0.5*(phi_hat/MARKER_ROT_SIGMA)**2))
+                weight = p1*p2
         # Set the particle's weight and add it to the list of measured particles
         measured_weights.append(weight)
         measured_particles.append(particle)
