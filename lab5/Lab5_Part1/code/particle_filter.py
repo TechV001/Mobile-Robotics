@@ -79,13 +79,14 @@ def measurement_update(particles, measured_marker_list, grid):
             
             if measured_marker is not None:
                 # Calculate the likelihood of the measured marker given the particle's pose
-                distance_error = math.sqrt(rx**2 + ry**2)
-                phi_hat = math.atan2(ry,rx)
-                
+                r_hat = grid_distance(rx, ry, particle.x, particle.y) 
+                phi_hat = math.atan2(ry - particle.y, rx - particle.x)
+                range_r = math.sqrt(rx**2 + ry**2)
+                phi =  math.atan2(ry,rx)
                 # Update the particle's weight
                 
-                p1 = (1/(math.sqrt(2*math.pi)*MARKER_TRANS_SIGMA)) * (math.e ** (-0.5*(distance_error/MARKER_TRANS_SIGMA)**2))
-                p2 = (1/(math.sqrt(2*math.pi)*MARKER_ROT_SIGMA)) * (math.e ** (-0.5*(phi_hat/MARKER_ROT_SIGMA)**2))
+                p1 = (1/(math.sqrt(2*math.pi)*MARKER_TRANS_SIGMA)) * (math.e ** (-0.5*(range_r-r_hat/MARKER_TRANS_SIGMA)**2))
+                p2 = (1/(math.sqrt(2*math.pi)*MARKER_ROT_SIGMA)) * (math.e ** (-0.5*(rh - phi_hat/MARKER_ROT_SIGMA)**2))
                 weight = p1*p2
         # Set the particle's weight and add it to the list of measured particles
         measured_weights.append(weight)
