@@ -3,6 +3,7 @@ from particle import Particle
 from utils import *
 from setting import *
 import math
+import numpy as np
 
 # ------------------------------------------------------------------------
 def motion_update(particles, odom):
@@ -27,9 +28,9 @@ def motion_update(particles, odom):
         # Calculate the motion model based on the odometry measurements
         
         
-        delta_rot1 = math.atan2(odom[1][1] - odom[0][1], odom[1][0] - odom[0][0]) - odom[0][2]
+        delta_rot1 = math.atan2(odom[1][1], odom[1][0])
         delta_trans = grid_distance(odom[0][0], odom[0][1], odom[1][0], odom[1][1])
-        delta_rot2 = odom[1][2] - odom[0][2] - delta_rot1
+        delta_rot2 = odom[1][2] - delta_rot1
         
         # Add noise to the motion model
         delta_rot1_hat = delta_rot1 - 0.001 * random.gauss(0, alpha1 * delta_rot1 + alpha2 * delta_trans)
@@ -65,6 +66,8 @@ def measurement_update(particles, measured_marker_list, grid):
                 after measurement update
     """
     measured_particles = []
+    measured_weights = []
+    
     for particle in particles:
         weight = 1.0
         #nearest_marker = None
@@ -73,33 +76,33 @@ def measurement_update(particles, measured_marker_list, grid):
             rx, ry, rh = measured_marker
 
             # Transform the measured marker from the robot's frame to the world frame
-            wx = particle.x + rx * math.cos(particle.h) - ry * math.sin(particle.h)
-            wy = particle.y + rx * math.sin(particle.h) + ry * math.cos(particle.h)
-            wh = particle.h + rh
             
-            #dx = rx - wx
-            #dy = ry - wy
-            #cdist = dx * dx + dy * dy
-            # Find the nearest marker in the grid
-            #if nearest_dist < cdist:
-               #nearest_dist = cdist, nearest_marker = measured_marker
-         
             if measured_marker is not None:
                 # Calculate the likelihood of the measured marker given the particle's pose
-                distance_error = grid_distance(wx, wy, measured_marker[0], measured_marker[1])
-                heading_error = wh - measured_marker[2]
-      
+                distance_error = grid_distance(measured_marker[0], measured_marker[1], rx, ry)
+                heading_error = diff_heading_deg(measured_marker[2], rh)
+                phi_hat = math.atan2(measured_marker[1] - ry, measured_marker[0] - rx) - rh
+                
                 # Update the particle's weight
-                weight *= (math.e ** (-0.5 * (distance_error**2 / (0.1**2) + heading_error**2 / (10.0**2))))
-
+                weight *= 1/(math.sqrt(2*math.pi*(MARKER_TRANS_SIGMA**2))) * (math.e ** (-0.5 * (distance_error**2 / (0.1**2) + heading_error**2 / (MARKER_TRANS_SIGMA**2))))
+                
         # Set the particle's weight and add it to the list of measured particles
-        particle.weight = weight
+        measured_weights.append(weight)
         measured_particles.append(particle)
 
     # Normalize the particle weights
-    total_weight = sum(particle.weight for particle in measured_particles)
-    for particle in measured_particles:
-      if(total_weight != 0):
-        particle.weight /= total_weight
-
+    i = 0
+    total_weight = sum(measured_weights)
+    normalized_weights = []
+    
+    if(total_weight != 0):
+      for i in measured_weights:
+         new_weight = i / total_weight
+         normalized_weights.append(new_weight)
+         
+      if(len(measured_weights) != 0):
+         measured_particles = np.random.choice(particles, PARTICLE_COUNT-5, replace = True, p = normalized_weights)
+    
+    else:
+      return particle.create_random(PARTICLE_COUNT, grid)
     return measured_particles
