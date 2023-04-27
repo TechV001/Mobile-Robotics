@@ -98,7 +98,7 @@ def measurement_update(particles, measured_marker_list, grid):
                r_hat = grid_distance(px,py,i[0],i[1])
                phi_hat = diff_heading_deg(ph,i[2])
                r_range = math.sqrt(px**2 + py**2)
-               phi = proj_angle_deg(i[2] - ph)
+               phi = ph
                
                r_hat = (-0.5*((r_range-r_hat)**2/MARKER_TRANS_SIGMA**2))
                phi_hat = (-0.5*((phi-phi_hat)**2/MARKER_ROT_SIGMA**2))
