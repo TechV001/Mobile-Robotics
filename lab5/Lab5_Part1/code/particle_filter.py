@@ -66,48 +66,75 @@ def measurement_update(particles, measured_marker_list, grid):
                 after measurement update
     """
     measured_particles = []
-    measured_weights = []
+    weights = []
     
     for particle in particles:
-        weight = 1.0
+        pair = []
+        p_marker = particle.read_markers(grid)
+        px,py,ph = particle.xyh
+        
         for measured_marker in measured_marker_list:
-            rx, ry, rh = measured_marker
-
-            # Transform the measured marker from the robot's frame to the world frame
+            rx, ry, rh = add_marker_measurement_noise(measured_marker, MARKER_TRANS_SIGMA, MARKER_ROT_SIGMA)
             
-            if measured_marker is not None:
+            if(p_marker is not None):
+               nearest_marker = None
+               min_dist = float("inf")
+               
+               for marker in p_marker:
+                  dist = grid_distance(rx,ry,marker[0],marker[1])
+                  if(dist < min_dist):
+                     min_dist = dist
+                     nearest_marker = marker
+                     pair.append((measured_marker, nearest_marker))
+        if(grid.is_in(px,py) == False):
+            weights.append(0)
+        elif(len(p_marker) == 0 and len(measured_marker_list) == 0):
+            weights.append(1)
+        elif(len(p_marker) != len(measured_marker_list)):
+            weights.append(0)
+        elif(len(pair) != 0):
+            p = 1
+            for i, j in pair:
+               r_hat = grid_distance(i[0],i[1],j[0],j[1])
+               phi_hat = diff_heading_deg(i[2],j[2])
+               r_range = grid_distance(j[0],j[1],px,py)
+               phi = proj_angle_deg(ph)
+               r_hat = (-0.5*((r_hat)**2/MARKER_TRANS_SIGMA**2))
+               phi_hat = (-0.5*((phi_hat-phi)**2/MARKER_ROT_SIGMA**2))
+               #r_hat = (1/(math.sqrt(2*math.pi)*MARKER_TRANS_SIGMA)) * (math.e ** (-0.5*((r_range-r_hat)**2/MARKER_TRANS_SIGMA**2)))
+               #phi_hat = (1/(math.sqrt(2*math.pi)*MARKER_ROT_SIGMA)) * (math.e ** (-0.5*((phi-phi_hat)**2/MARKER_ROT_SIGMA**2)))
+               p *= np.exp(r_hat+phi_hat)
+            weights.append(p)
+        
                 # Calculate the likelihood of the measured marker given the particle's pose
-                r_hat = grid_distance(particle.x, particle.y, rx, ry) 
-                phi_hat = proj_angle_deg(math.atan2(diff_heading_deg(particle.y,ry), 
-                  diff_heading_deg(particle.x,rx)))
+                #r_hat = grid_distance(particle.x, particle.y, rx, ry) 
+                #phi_hat = proj_angle_deg(math.atan2(diff_heading_deg(particle.y,ry), 
+                  #diff_heading_deg(particle.x,rx)))
                 
-                for predicted in particle.read_markers(grid):
-                   px,py,ph = predicted
-                   range_r = grid_distance(particle.x, particle.y, px,py)
-                   phi =  proj_angle_deg(math.atan2(diff_heading_deg(particle.y,py), 
-                  diff_heading_deg(particle.x,px)))
+                #for predicted in particle.read_markers(grid):
+                   #px,py,ph = predicted
+                   #range_r = grid_distance(particle.x, particle.y, px,py)
+                   #phi =  proj_angle_deg(math.atan2(diff_heading_deg(particle.y,py), 
+                  #diff_heading_deg(particle.x,px)))
                    # Update the particle's weight
                    
-                   p1 = (1/(math.sqrt(2*math.pi)*MARKER_TRANS_SIGMA)) * (math.e ** (-0.5*((range_r-r_hat)**2/MARKER_TRANS_SIGMA**2)))
-                   p2 = (1/(math.sqrt(2*math.pi)*MARKER_ROT_SIGMA)) * (math.e ** (-0.5*((phi - phi_hat)**2/MARKER_ROT_SIGMA**2)))
-                   weight = p1*p2
-        # Set the particle's weight and add it to the list of measured particles
-        measured_weights.append(weight)
-        measured_particles.append(particle)
+                   #p1 = (1/(math.sqrt(2*math.pi)*MARKER_TRANS_SIGMA)) * (math.e ** (-0.5*((range_r-r_hat)**2/MARKER_TRANS_SIGMA**2)))
+                   #p2 = (1/(math.sqrt(2*math.pi)*MARKER_ROT_SIGMA)) * (math.e ** (-0.5*((phi - phi_hat)**2/MARKER_ROT_SIGMA**2)))
+                   #weight *= p1*p2
 
     # Normalize the particle weights
-    i = 0
-    total_weight = sum(measured_weights)
+    total_weight = sum(weights)
     normalized_weights = []
     
     if(total_weight != 0):
-      for i in measured_weights:
+      for i in weights:
          new_weight = i / total_weight
          normalized_weights.append(new_weight)
          
-      if(len(measured_weights) != 0):
+      if(len(weights) != 0):
          measured_particles = np.random.choice(particles, PARTICLE_COUNT-5, replace = True, p = normalized_weights)
     
     else:
+      #return np.random.choice(particles, PARTICLE_COUNT-5, replace = True)
       return particle.create_random(PARTICLE_COUNT, grid)
     return measured_particles
