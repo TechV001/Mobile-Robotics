@@ -80,13 +80,17 @@ def measurement_update(particles, measured_marker_list, grid):
                 r_hat = grid_distance(particle.x, particle.y, rx, ry) 
                 phi_hat = proj_angle_deg(math.atan2(diff_heading_deg(particle.y,ry), 
                   diff_heading_deg(particle.x,rx)))
-                range_r = math.sqrt(rx**2 + ry**2)
-                phi =  diff_heading_deg(math.atan2(ry, rx), proj_angle_deg(rh))
-                # Update the particle's weight
                 
-                p1 = (1/(math.sqrt(2*math.pi)*MARKER_TRANS_SIGMA)) * (math.e ** (-0.5*(range_r/MARKER_TRANS_SIGMA)**2))
-                p2 = (1/(math.sqrt(2*math.pi)*MARKER_ROT_SIGMA)) * (math.e ** (-0.5*(phi-phi_hat-proj_angle_deg(rh)/MARKER_ROT_SIGMA)**2))
-                weight = p1*p2
+                for predicted in particle.read_markers(grid):
+                   px,py,ph = predicted
+                   range_r = grid_distance(particle.x, particle.y, px,py)
+                   phi =  proj_angle_deg(math.atan2(diff_heading_deg(particle.y,py), 
+                  diff_heading_deg(particle.x,px)))
+                   # Update the particle's weight
+                   
+                   p1 = (1/(math.sqrt(2*math.pi)*MARKER_TRANS_SIGMA)) * (math.e ** (-0.5*((range_r-r_hat)**2/MARKER_TRANS_SIGMA**2)))
+                   p2 = (1/(math.sqrt(2*math.pi)*MARKER_ROT_SIGMA)) * (math.e ** (-0.5*((phi - phi_hat)**2/MARKER_ROT_SIGMA**2)))
+                   weight = p1*p2
         # Set the particle's weight and add it to the list of measured particles
         measured_weights.append(weight)
         measured_particles.append(particle)
