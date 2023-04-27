@@ -28,18 +28,18 @@ def motion_update(particles, odom):
         # Calculate the motion model based on the odometry measurements
         
         
-        delta_rot1 = diff_heading_deg(math.atan2(odom[1][1] - odom[0][1], odom[1][0] - odom[0][0]),odom[0][2])
+        delta_rot1 = math.atan2(odom[1][1] - odom[0][1], odom[1][0] - odom[0][0]) - odom[0][2]
         delta_trans = grid_distance(odom[0][0], odom[0][1], odom[1][0], odom[1][1])
-        delta_rot2 = diff_heading_deg(diff_heading_deg(odom[1][2],odom[0][2]),delta_rot1)
+        delta_rot2 = diff_heading_deg(diff_heading_deg(odom[1][2],odom[0][2]), delta_rot1)
         
         # Add noise to the motion model
-        delta_rot1_hat = diff_heading_deg(delta_rot1, random.gauss(0, alpha1 * delta_rot1 + alpha2 * delta_trans))
+        delta_rot1_hat = delta_rot1 - random.gauss(0, alpha1 * delta_rot1 + alpha2 * delta_trans)
         delta_trans_hat = delta_trans - random.gauss(0, alpha3 * delta_trans + alpha4 * (delta_rot1 + delta_rot2))
-        delta_rot2_hat = diff_heading_deg(delta_rot2, random.gauss(0, alpha1 * delta_rot2 + alpha2 * delta_trans))
+        delta_rot2_hat = delta_rot2 - random.gauss(0, alpha1 * delta_rot2 + alpha2 * delta_trans)
         
         # Update the particle's pose based on the noisy motion model
-        new_x = particle.x + delta_trans_hat * math.cos(particle.h + delta_rot1_hat)
-        new_y = particle.y + delta_trans_hat * math.sin(particle.h + delta_rot1_hat)
+        new_x = particle.x + delta_trans_hat * math.cos((particle.h*(math.pi/180)) + delta_rot1_hat)
+        new_y = particle.y + delta_trans_hat * math.sin((particle.h*(math.pi/180)) + delta_rot1_hat)
         new_h = particle.h + delta_rot1_hat + delta_rot2_hat
         
         # Add the updated particle to the list of updated particles
@@ -95,16 +95,16 @@ def measurement_update(particles, measured_marker_list, grid):
         elif(len(pair) != 0):
             p = 1
             for i, j in pair:
-               r_hat = grid_distance(px,py,j[0],j[1])
-               phi_hat = diff_heading_deg(ph,j[2])
-               r_range = math.sqrt(i[0]**2 + i[1]**2)
-               phi = proj_angle_deg(i[2])
+               r_hat = grid_distance(px,py,i[0],i[1])
+               phi_hat = diff_heading_deg(ph,i[2])
+               r_range = math.sqrt(px**2 + py**2)
+               phi = proj_angle_deg(i[2] - ph)
                
                r_hat = (-0.5*((r_range-r_hat)**2/MARKER_TRANS_SIGMA**2))
                phi_hat = (-0.5*((phi-phi_hat)**2/MARKER_ROT_SIGMA**2))
                #r_hat = (1/(math.sqrt(2*math.pi)*MARKER_TRANS_SIGMA)) * (math.e ** (-0.5*((r_range-r_hat)**2/MARKER_TRANS_SIGMA**2)))
                #phi_hat = (1/(math.sqrt(2*math.pi)*MARKER_ROT_SIGMA)) * (math.e ** (-0.5*((phi-phi_hat)**2/MARKER_ROT_SIGMA**2)))
-               p *= r_hat*phi_hat
+               p *= np.exp(r_hat+phi_hat)
             weights.append(p)
         
                 # Calculate the likelihood of the measured marker given the particle's pose
