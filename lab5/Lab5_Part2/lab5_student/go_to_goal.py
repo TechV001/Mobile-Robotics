@@ -129,21 +129,24 @@ async def run(robot: cozmo.robot.Robot):
 
     ############################################################################
     ######################### YOUR CODE HERE####################################
-
+	poses = compute_odometry(robot.Pose)
+	markers = image_processing(robot)
 	#obtain odometry information
-	odom = compute_odometry()
+	poses = compute_odometry(poses[1])
 	#obtain list of currently seen markers and their poses
-	markers = cvt_2Dmarker_measurements()
+	markers = cvt_2Dmarker_measurements(markers)
 	#update particle filter
 	pf.update(odom, markers)
 	#update the particle filter GUI
 	#i dont know what to do here lol
 	
 	#finite state machine based on localization
-	
+	await robot.turn_in_place(cozmo.util.radians(theta), in_parallel=True).wait_for_completed()
 	
 	#drive to goal
-	
+	await robot.turn_in_place(cozmo.util.radians(theta), in_parallel=True).wait_for_completed()
+	await robot.drive_straight(cozmo.util.distance_mm(distance),
+					cozmo.util.speed_mmps(300), in_parallel=True).wait_for_completed()
 	
 	#reset localization if robot is picked up (technically should be a part of previous function)
 
