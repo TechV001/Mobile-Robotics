@@ -131,16 +131,19 @@ async def run(robot: cozmo.robot.Robot):
     ######################### YOUR CODE HERE####################################
 
 	#obtain odometry information
-
+	odom = compute_odometry()
 	#obtain list of currently seen markers and their poses
-	
+	markers = cvt_2Dmarker_measurements()
 	#update particle filter
-	
-	#upgade the particle filter GUI
+	pf.update(odom, markers)
+	#update the particle filter GUI
+	#i dont know what to do here lol
 	
 	#finite state machine based on localization
 	
+	
 	#drive to goal
+	
 	
 	#reset localization if robot is picked up (technically should be a part of previous function)
 
