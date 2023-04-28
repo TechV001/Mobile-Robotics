@@ -95,7 +95,7 @@ def measurement_update(particles, measured_marker_list, grid):
         elif(len(pair) != 0):
             p = 1
             for i, j in pair:
-               r_hat = grid_distance(p_marker[0][0],p_marker[0][1],i[0],i[1])#grid_distance(p_marker[0][0],p_marker[0][1],px,py)
+               r_hat = grid_distance(i[0],i[1],p_marker[0][0],p_marker[0][1])#grid_distance(p_marker[0][0],p_marker[0][1],px,py)
                phi_hat = diff_heading_deg(i[2],p_marker[0][2])
                r_range = math.sqrt(j[0]**2 + j[1]**2)
                phi = proj_angle_deg(j[2])
@@ -105,8 +105,10 @@ def measurement_update(particles, measured_marker_list, grid):
                phi_hat = (-0.5*((phi-phi_hat)**2/MARKER_ROT_SIGMA**2))
                #r_hat = (1/(math.sqrt(2*math.pi)*MARKER_TRANS_SIGMA)) * (math.e ** (-0.5*((r_range-r_hat)**2/MARKER_TRANS_SIGMA**2)))
                #phi_hat = (1/(math.sqrt(2*math.pi)*MARKER_ROT_SIGMA)) * (math.e ** (-0.5*((phi-phi_hat)**2/MARKER_ROT_SIGMA**2)))
-               p *= r_hat*phi_hat
+               p += r_hat*phi_hat
             weights.append(p)
+        else:
+            weights.append(0)
 
     # Normalize the particle weights
     total_weight = sum(weights)
