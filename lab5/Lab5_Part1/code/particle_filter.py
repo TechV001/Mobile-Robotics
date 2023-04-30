@@ -105,7 +105,7 @@ def measurement_update(particles, measured_marker_list, grid):
                phi_hat = (-0.5*((phi-phi_hat)**2/MARKER_ROT_SIGMA**2))
                #r_hat = (1/(math.sqrt(2*math.pi)*MARKER_TRANS_SIGMA)) * (math.e ** (-0.5*((r_range-r_hat)**2/MARKER_TRANS_SIGMA**2)))
                #phi_hat = (1/(math.sqrt(2*math.pi)*MARKER_ROT_SIGMA)) * (math.e ** (-0.5*((phi-phi_hat)**2/MARKER_ROT_SIGMA**2)))
-               p *= r_hat*phi_hat
+               p = r_hat*phi_hat
             weights.append(p)
         else:
             weights.append(0)
@@ -148,16 +148,17 @@ def measurement_update(particles, measured_marker_list, grid):
                min_theta += theta
                theta = min_theta / j
                
-      #if(len(measured_marker_list) == 0 and len(particle_marker) == 0):
-            #return np.random.choice(particles, PARTICLE_COUNT-5, replace = True)
+      
       #elif(len(measured_marker_list) == len(particle_marker)):
          #return np.random.choice(particles, PARTICLE_COUNT-5, replace = True)
       #elif(len(particle_marker) == 0 and len(measured_marker_list) == 1):
          #return np.random.choice(particles, PARTICLE_COUNT-5, replace = True)
-      if((0.10 < dist < 1) and (-10 < theta < 30)):
+      if((-0.25 < dist < 0.25) and (-0.5 <= theta <= 0.5)):
          return np.random.choice(particles, PARTICLE_COUNT-5, replace = True)
+      #elif(len(measured_marker_list) == 0 and len(particle_marker) == 0):
+            #return np.random.choice(particles, PARTICLE_COUNT-5, replace = True)
       #elif((2 >= len(particle_marker)) and (0 <= len(measured_marker_list)<2)):
-      elif( 0 <= len(particle_marker) and  1 <=  len(measured_marker_list)):
+      elif(len(particle_marker) != len(measured_marker_list)):
          return particle.create_random(PARTICLE_COUNT, grid)
       return  np.random.choice(particles, PARTICLE_COUNT-5, replace = True)
     return measured_particles
