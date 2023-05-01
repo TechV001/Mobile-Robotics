@@ -99,7 +99,7 @@ class GUIWindow():
 
     def clean_world(self):
         #for eachparticle in self.dots:
-        #    self.canvas.delete(eachparticle)
+        #self.canvas.delete(eachparticle)
         self.canvas.delete("all")
         self.drawGrid()
         self.drawOccubpied()

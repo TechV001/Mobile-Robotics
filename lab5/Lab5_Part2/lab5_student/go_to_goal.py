@@ -118,40 +118,37 @@ class ParticleFilter:
 
 
 async def run(robot: cozmo.robot.Robot):
-    global last_pose
-    global grid, gui
+   global last_pose
+   global grid, gui
+   markers = []
+   markers_pose = []
+   # start streaming
+   robot.camera.image_stream_enabled = True
+   #start particle filter
+   pf = ParticleFilter(grid)
+   states = ('looking', 'found', 'nabbed')
+   cur_state = states[0]
+   try:
+      while True:
+         odom = compute_odometry(robot.pose)
+         markers = await image_processing(robot)
+         markers_pose = cvt_2Dmarker_measurements(markers)
+         pf.update(odom, markers_pose)
+         #gui.update()
+         if(cur_state == states[0]):
+            await robot.drive_wheels(0.5, 1)
+         elif(cur_state == states[1]):
+            await robot.drive_wheels(0,0)
+         elif(cur_state == states[2]):
+         
+         else:
+            pass
 
-    # start streaming
-    robot.camera.image_stream_enabled = True
-
-    #start particle filter
-    pf = ParticleFilter(grid)
-
-    ############################################################################
-    ######################### YOUR CODE HERE####################################
-	poses = compute_odometry(robot.Pose)
-	markers = image_processing(robot)
-	#obtain odometry information
-	poses = compute_odometry(poses[1])
-	#obtain list of currently seen markers and their poses
-	markers = cvt_2Dmarker_measurements(markers)
-	#update particle filter
-	pf.update(odom, markers)
-	#update the particle filter GUI
-	#i dont know what to do here lol
-	
-	#finite state machine based on localization
-	await robot.turn_in_place(cozmo.util.radians(theta), in_parallel=True).wait_for_completed()
-	
-	#drive to goal
-	await robot.turn_in_place(cozmo.util.radians(theta), in_parallel=True).wait_for_completed()
-	await robot.drive_straight(cozmo.util.distance_mm(distance),
-					cozmo.util.speed_mmps(300), in_parallel=True).wait_for_completed()
-	
-	#reset localization if robot is picked up (technically should be a part of previous function)
-
-    ############################################################################
-
+   except KeyboardInterrupt:
+        print("")
+        print("Exit requested by user")
+   except cozmo.RobotBusy as e:
+        print(e)
 
 class CozmoThread(threading.Thread):
     def __init__(self):
